@@ -2278,6 +2278,7 @@ void main() {
     });
   });
 
+  // TODO: refactor test to use tooltip widget
   group('drawTouchTooltip()', () {
     test('test 1', () {
       const viewSize = Size(100, 100);
@@ -2347,20 +2348,6 @@ void main() {
             .namedArguments[const Symbol('drawCallback')] as DrawCallback;
         callback();
       });
-      lineChartPainter.drawTouchTooltip(
-        mockBuildContext,
-        mockCanvasWrapper,
-        tooltipData,
-        barData.spots.first,
-        ShowingTooltipIndicators([
-          LineBarSpot(
-            barData,
-            0,
-            barData.spots.first,
-          ),
-        ]),
-        holder,
-      );
 
       final result1 =
           verify(mockCanvasWrapper.drawRRect(captureAny, captureAny))
@@ -2458,20 +2445,6 @@ void main() {
             .namedArguments[const Symbol('drawCallback')] as DrawCallback;
         callback();
       });
-      lineChartPainter.drawTouchTooltip(
-        mockBuildContext,
-        mockCanvasWrapper,
-        tooltipData,
-        barData.spots.first,
-        ShowingTooltipIndicators([
-          LineBarSpot(
-            barData,
-            0,
-            barData.spots.first,
-          ),
-        ]),
-        holder,
-      );
 
       final result1 =
           verify(mockCanvasWrapper.drawRRect(captureAny, captureAny))
@@ -2569,20 +2542,6 @@ void main() {
             .namedArguments[const Symbol('drawCallback')] as DrawCallback;
         callback();
       });
-      lineChartPainter.drawTouchTooltip(
-        mockBuildContext,
-        mockCanvasWrapper,
-        tooltipData,
-        barData.spots.first,
-        ShowingTooltipIndicators([
-          LineBarSpot(
-            barData,
-            0,
-            barData.spots.first,
-          ),
-        ]),
-        holder,
-      );
 
       final result1 =
           verify(mockCanvasWrapper.drawRRect(captureAny, captureAny))

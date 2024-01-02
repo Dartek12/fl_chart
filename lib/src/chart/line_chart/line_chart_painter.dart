@@ -6,7 +6,6 @@ import 'package:fl_chart/src/chart/base/axis_chart/axis_chart_painter.dart';
 import 'package:fl_chart/src/chart/base/base_chart/base_chart_painter.dart';
 import 'package:fl_chart/src/extensions/paint_extension.dart';
 import 'package:fl_chart/src/extensions/path_extension.dart';
-import 'package:fl_chart/src/extensions/text_align_extension.dart';
 import 'package:fl_chart/src/utils/canvas_wrapper.dart';
 import 'package:fl_chart/src/utils/utils.dart';
 import 'package:flutter/material.dart';
@@ -36,23 +35,12 @@ class LineChartPainter extends AxisChartPainter<LineChartData> {
     _touchLinePaint = Paint()
       ..style = PaintingStyle.stroke
       ..color = Colors.black;
-
-    _bgTouchTooltipPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = Colors.white;
-
-    _borderTouchTooltipPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = Colors.transparent
-      ..strokeWidth = 1.0;
   }
   late Paint _barPaint;
   late Paint _barAreaPaint;
   late Paint _barAreaLinesPaint;
   late Paint _clearBarAreaPaint;
   late Paint _touchLinePaint;
-  late Paint _bgTouchTooltipPaint;
-  late Paint _borderTouchTooltipPaint;
 
   /// Paints [LineChartData] into the provided canvas.
   @override
@@ -137,33 +125,6 @@ class LineChartPainter extends AxisChartPainter<LineChartData> {
 
     if (data.clipData.any) {
       canvasWrapper.restore();
-    }
-
-    // Draw touch tooltip on most top spot
-    for (var i = 0; i < data.showingTooltipIndicators.length; i++) {
-      var tooltipSpots = data.showingTooltipIndicators[i];
-
-      final showingBarSpots = tooltipSpots.showingSpots;
-      if (showingBarSpots.isEmpty) {
-        continue;
-      }
-      final barSpots = List<LineBarSpot>.of(showingBarSpots);
-      FlSpot topSpot = barSpots[0];
-      for (final barSpot in barSpots) {
-        if (barSpot.y > topSpot.y) {
-          topSpot = barSpot;
-        }
-      }
-      tooltipSpots = ShowingTooltipIndicators(barSpots);
-
-      drawTouchTooltip(
-        context,
-        canvasWrapper,
-        data.lineTouchData.touchTooltipData,
-        topSpot,
-        tooltipSpots,
-        holder,
-      );
     }
   }
 
@@ -975,218 +936,6 @@ class LineChartPainter extends AxisChartPainter<LineChartData> {
 
     barPath = barPath.toDashedPath(barData.dashArray);
     canvasWrapper.drawPath(barPath, _barPaint);
-  }
-
-  @visibleForTesting
-  void drawTouchTooltip(
-    BuildContext context,
-    CanvasWrapper canvasWrapper,
-    LineTouchTooltipData tooltipData,
-    FlSpot showOnSpot,
-    ShowingTooltipIndicators showingTooltipSpots,
-    PaintHolder<LineChartData> holder,
-  ) {
-    final viewSize = canvasWrapper.size;
-
-    const textsBelowMargin = 4;
-
-    /// creating TextPainters to calculate the width and height of the tooltip
-    final drawingTextPainters = <TextPainter>[];
-
-    final tooltipItems =
-        tooltipData.getTooltipItems(showingTooltipSpots.showingSpots);
-    if (tooltipItems.length != showingTooltipSpots.showingSpots.length) {
-      throw Exception('tooltipItems and touchedSpots size should be same');
-    }
-
-    for (var i = 0; i < showingTooltipSpots.showingSpots.length; i++) {
-      final tooltipItem = tooltipItems[i];
-      if (tooltipItem == null) {
-        continue;
-      }
-
-      final span = TextSpan(
-        style: Utils().getThemeAwareTextStyle(context, tooltipItem.textStyle),
-        text: tooltipItem.text,
-        children: tooltipItem.children,
-      );
-
-      final tp = TextPainter(
-        text: span,
-        textAlign: tooltipItem.textAlign,
-        textDirection: tooltipItem.textDirection,
-        textScaler: holder.textScaler,
-      )..layout(maxWidth: tooltipData.maxContentWidth);
-      drawingTextPainters.add(tp);
-    }
-    if (drawingTextPainters.isEmpty) {
-      return;
-    }
-
-    /// biggerWidth
-    /// some texts maybe larger, then we should
-    /// draw the tooltip' width as wide as biggerWidth
-    ///
-    /// sumTextsHeight
-    /// sum up all Texts height, then we should
-    /// draw the tooltip's height as tall as sumTextsHeight
-    var biggerWidth = 0.0;
-    var sumTextsHeight = 0.0;
-    for (final tp in drawingTextPainters) {
-      if (tp.width > biggerWidth) {
-        biggerWidth = tp.width;
-      }
-      sumTextsHeight += tp.height;
-    }
-    sumTextsHeight += (drawingTextPainters.length - 1) * textsBelowMargin;
-
-    /// if we have multiple bar lines,
-    /// there are more than one FlCandidate on touch area,
-    /// we should get the most top FlSpot Offset to draw the tooltip on top of it
-    final mostTopOffset = Offset(
-      getPixelX(showOnSpot.x, viewSize, holder),
-      getPixelY(showOnSpot.y, viewSize, holder),
-    );
-
-    final tooltipWidth = biggerWidth + tooltipData.tooltipPadding.horizontal;
-    final tooltipHeight = sumTextsHeight + tooltipData.tooltipPadding.vertical;
-
-    double tooltipTopPosition;
-    if (tooltipData.showOnTopOfTheChartBoxArea) {
-      tooltipTopPosition = 0 - tooltipHeight - tooltipData.tooltipMargin;
-    } else {
-      tooltipTopPosition =
-          mostTopOffset.dy - tooltipHeight - tooltipData.tooltipMargin;
-    }
-
-    final tooltipLeftPosition = getTooltipLeft(
-      mostTopOffset.dx,
-      tooltipWidth,
-      tooltipData.tooltipHorizontalAlignment,
-      tooltipData.tooltipHorizontalOffset,
-    );
-
-    /// draw the background rect with rounded radius
-    var rect = Rect.fromLTWH(
-      tooltipLeftPosition,
-      tooltipTopPosition,
-      tooltipWidth,
-      tooltipHeight,
-    );
-
-    if (tooltipData.fitInsideHorizontally) {
-      if (rect.left < 0) {
-        final shiftAmount = 0 - rect.left;
-        rect = Rect.fromLTRB(
-          rect.left + shiftAmount,
-          rect.top,
-          rect.right + shiftAmount,
-          rect.bottom,
-        );
-      }
-
-      if (rect.right > viewSize.width) {
-        final shiftAmount = rect.right - viewSize.width;
-        rect = Rect.fromLTRB(
-          rect.left - shiftAmount,
-          rect.top,
-          rect.right - shiftAmount,
-          rect.bottom,
-        );
-      }
-    }
-
-    if (tooltipData.fitInsideVertically) {
-      if (rect.top < 0) {
-        final shiftAmount = 0 - rect.top;
-        rect = Rect.fromLTRB(
-          rect.left,
-          rect.top + shiftAmount,
-          rect.right,
-          rect.bottom + shiftAmount,
-        );
-      }
-
-      if (rect.bottom > viewSize.height) {
-        final shiftAmount = rect.bottom - viewSize.height;
-        rect = Rect.fromLTRB(
-          rect.left,
-          rect.top - shiftAmount,
-          rect.right,
-          rect.bottom - shiftAmount,
-        );
-      }
-    }
-
-    final radius = Radius.circular(tooltipData.tooltipRoundedRadius);
-    final roundedRect = RRect.fromRectAndCorners(
-      rect,
-      topLeft: radius,
-      topRight: radius,
-      bottomLeft: radius,
-      bottomRight: radius,
-    );
-    _bgTouchTooltipPaint.color = tooltipData.tooltipBgColor;
-
-    final rotateAngle = tooltipData.rotateAngle;
-    final rectRotationOffset =
-        Offset(0, Utils().calculateRotationOffset(rect.size, rotateAngle).dy);
-    final rectDrawOffset = Offset(roundedRect.left, roundedRect.top);
-
-    final textRotationOffset =
-        Utils().calculateRotationOffset(rect.size, rotateAngle);
-
-    if (tooltipData.tooltipBorder != BorderSide.none) {
-      _borderTouchTooltipPaint
-        ..color = tooltipData.tooltipBorder.color
-        ..strokeWidth = tooltipData.tooltipBorder.width;
-    }
-
-    canvasWrapper.drawRotated(
-      size: rect.size,
-      rotationOffset: rectRotationOffset,
-      drawOffset: rectDrawOffset,
-      angle: rotateAngle,
-      drawCallback: () {
-        canvasWrapper
-          ..drawRRect(roundedRect, _bgTouchTooltipPaint)
-          ..drawRRect(roundedRect, _borderTouchTooltipPaint);
-      },
-    );
-
-    /// draw the texts one by one in below of each other
-    var topPosSeek = tooltipData.tooltipPadding.top;
-    for (final tp in drawingTextPainters) {
-      final yOffset = rect.topCenter.dy +
-          topPosSeek -
-          textRotationOffset.dy +
-          rectRotationOffset.dy;
-
-      final align = tp.textAlign.getFinalHorizontalAlignment(tp.textDirection);
-      final xOffset = switch (align) {
-        HorizontalAlignment.left => rect.left + tooltipData.tooltipPadding.left,
-        HorizontalAlignment.right =>
-          rect.right - tooltipData.tooltipPadding.right - tp.width,
-        _ => rect.center.dx - (tp.width / 2),
-      };
-
-      final drawOffset = Offset(
-        xOffset,
-        yOffset,
-      );
-
-      canvasWrapper.drawRotated(
-        size: rect.size,
-        rotationOffset: rectRotationOffset,
-        drawOffset: rectDrawOffset,
-        angle: rotateAngle,
-        drawCallback: () {
-          canvasWrapper.drawText(tp, drawOffset);
-        },
-      );
-      topPosSeek += tp.height;
-      topPosSeek += textsBelowMargin;
-    }
   }
 
   @visibleForTesting

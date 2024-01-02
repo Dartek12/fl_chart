@@ -22,7 +22,6 @@ class MyApp extends StatelessWidget {
       child: MaterialApp.router(
         title: AppTexts.appName,
         theme: ThemeData(
-          brightness: Brightness.dark,
           useMaterial3: true,
           textTheme: GoogleFonts.assistantTextTheme(
             Theme.of(context).textTheme.apply(
@@ -31,6 +30,11 @@ class MyApp extends StatelessWidget {
           ),
           scaffoldBackgroundColor: AppColors.pageBackground,
         ),
+        darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
+            textTheme: GoogleFonts.assistantTextTheme(
+                Theme.of(context).textTheme.apply(
+                      bodyColor: AppColors.mainTextColor3,
+                    ))),
         routerConfig: appRouterConfig,
       ),
     );
